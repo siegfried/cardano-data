@@ -1,20 +1,79 @@
 source("db.R")
 
+library(tidyverse)
+
 multisig_tx <- tx_tbl %>%
-    inner_join(script_tbl, by = c("id" = "tx_id")) %>%
-    inner_join(block_tbl, by = c("block_id" = "id")) %>%
+    inner_join(
+        script_tbl,
+        by = c("id" = "tx_id"),
+        suffix = c("", ".script")
+    ) %>%
+    inner_join(
+        block_tbl,
+        by = c("block_id" = "id"),
+        suffix = c("", ".block")
+    ) %>%
+    left_join(
+        ma_tx_mint_tbl,
+        by = c("id" = "tx_id"),
+        suffix = c("", ".ma_tx_mint")
+    ) %>%
     filter(type == "timelock") %>%
-    transmute(id = id.x, slot_no, date = as.Date(time)) %>%
-    distinct(id, .keep_all = TRUE)
+    transmute(
+        id,
+        id.ma_tx_mint,
+        slot_no,
+        date = as.Date(time)
+    )
 
-multisig_tx_stats <- mtx %>%
-    group_by(date) %>%
-    summarise(count = n()) %>%
-    arrange(date) %>%
-    mutate(cum_count = cumsum(number))
+non_minting_multisig_tx <- tx_tbl %>%
+    inner_join(
+        script_tbl,
+        by = c("id" = "tx_id"),
+        suffix = c("", ".script")
+    ) %>%
+    inner_join(
+        block_tbl,
+        by = c("block_id" = "id"),
+        suffix = c("", ".block")
+    ) %>%
+    anti_join(
+        ma_tx_mint_tbl,
+        by = c("id" = "tx_id")
+    ) %>%
+    filter(type == "timelock") %>%
+    transmute(
+        id,
+        slot_no,
+        date = as.Date(time)
+    )
 
-plot_multisig_tx_stats <- function(data) {
+calculate_tx_stats <- function(data) {
+    data %>%
+        group_by(date) %>%
+        summarise(count = n())
+}
+
+plot_multisig_count <- function(data) {
+    data %>%
+        ggplot(aes(date, count)) +
+        geom_area() +
+        labs(
+            title = "Multi-Sig Transactions",
+            subtitle = "Transactions with native script",
+            x = "Date",
+            y = "Count"
+        )
+}
+
+plot_multisig_cum_count <- function(data) {
     data %>%
         ggplot(aes(date, cum_count)) +
-            geom_line()
+        geom_area() +
+        labs(
+            title = "Multi-Sig Transactions",
+            subtitle = "Transactions with native script",
+            x = "Date",
+            y = "Cumulative Count"
+        )
 }
