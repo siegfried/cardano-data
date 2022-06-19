@@ -22,6 +22,7 @@ multisig_tx <- tx_tbl %>%
     transmute(
         id,
         id.ma_tx_mint,
+        mint = !is.na(id.ma_tx_mint),
         slot_no,
         date = as.Date(time)
     )
@@ -48,32 +49,31 @@ non_minting_multisig_tx <- tx_tbl %>%
         date = as.Date(time)
     )
 
-calculate_tx_stats <- function(data) {
+aggregate_tx_stats <- function(data) {
     data %>%
-        group_by(date) %>%
-        summarise(count = n())
-}
-
-plot_multisig_count <- function(data) {
-    data %>%
-        ggplot(aes(date, count)) +
-        geom_area() +
-        labs(
-            title = "Multi-Sig Transactions",
-            subtitle = "Transactions with native script",
-            x = "Date",
-            y = "Count"
+        group_by(date, mint) %>%
+        summarise(count = n()) %>%
+        collect() %>%
+        mutate(count = as.numeric(count)) %>%
+        ungroup() %>%
+        pivot_wider(names_from = mint, values_from = count, values_fill = 0) %>%
+        mutate(Mint = cumsum(`TRUE`), `Not Mint` = cumsum(`FALSE`)) %>%
+        pivot_longer(
+            c(Mint, `Not Mint`),
+            names_to = "Type",
+            values_to = "count"
         )
 }
 
 plot_multisig_cum_count <- function(data) {
     data %>%
-        ggplot(aes(date, cum_count)) +
+        ggplot(aes(date, count, fill = Type)) +
         geom_area() +
         labs(
-            title = "Multi-Sig Transactions",
+            title = "Multi-sig Transactions on Cardano chain",
             subtitle = "Transactions with native script",
             x = "Date",
             y = "Cumulative Count"
-        )
+        ) +
+        scale_x_date(breaks = "month")
 }
