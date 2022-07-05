@@ -77,3 +77,10 @@ plot_multisig_cum_count <- function(data) {
         ) +
         scale_x_date(breaks = "month")
 }
+
+unspent_assets <- utxo_tbl %>%
+    inner_join(
+        ma_tx_out_tbl,
+        by = c("id" = "tx_out_id")
+    ) %>%
+    left_join(multi_asset_tbl, by = c("ident" = "id"))
