@@ -84,3 +84,16 @@ unspent_assets <- utxo_tbl %>%
         by = c("id" = "tx_out_id")
     ) %>%
     left_join(multi_asset_tbl, by = c("ident" = "id"))
+
+coin_transfers <- tx_out_tbl %>%
+    inner_join(
+        tx_in_tbl,
+        by = c("tx_id" = "tx_in_id"),
+        suffix = c(".tx_out", ".tx_in")
+    ) %>%
+    inner_join(
+        tx_out_tbl,
+        by = c("tx_out_id" = "id", "tx_out_index" = "index"),
+        suffix = c("", ".tx_in_out")
+    ) %>%
+    filter(payment_cred != `payment_cred.tx_in_out`)
